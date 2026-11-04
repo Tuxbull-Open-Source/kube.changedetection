@@ -1,48 +1,64 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: changedetection-io
-  name: changedetection-io
+  name: changedetection
   namespace: __NAMESPACE__
+  labels:
+    app.kubernetes.io/name: changedetection
+    app.kubernetes.io/component: application
+    app.kubernetes.io/managed-by: kube.changedetection
 spec:
-  progressDeadlineSeconds: 600
   replicas: 1
-  revisionHistoryLimit: 10
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      deployment: changedetection-io
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+      app.kubernetes.io/name: changedetection
+      app.kubernetes.io/component: application
   template:
     metadata:
-      creationTimestamp: null
       labels:
-        deployment: changedetection-io
+        app.kubernetes.io/name: changedetection
+        app.kubernetes.io/component: application
+        app.kubernetes.io/managed-by: kube.changedetection
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-      - image: docker.io/dgtlmoon/changedetection.io:latest
-        imagePullPolicy: IfNotPresent
-        name: changedetection-io
-        env:
-          - name: PLAYWRIGHT_DRIVER_URL
-            value: ws://sockpuppet:3000
-        ports:
-        - containerPort: 5000
-          protocol: TCP
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /datastore
-          name: changedetection-io
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      terminationGracePeriodSeconds: 30
+        - name: changedetection
+          image: docker.io/dgtlmoon/changedetection.io:0.60.10@sha256:72f97681f390e4d6ae3e6585e1e0036449910f347144b766fc23910458566a1a
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BASE_URL
+              value: https://__FQDN__
+            - name: PLAYWRIGHT_DRIVER_URL
+              value: ws://sockpuppet:3000/?--window-size=1920,1080
+          ports:
+            - name: http
+              containerPort: 5000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /datastore
       volumes:
-      - name: changedetection-io
-        persistentVolumeClaim:
-          claimName: changedetection-io
+        - name: data
+          persistentVolumeClaim:
+            claimName: changedetection-data
