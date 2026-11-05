@@ -4,43 +4,66 @@ metadata:
   name: sockpuppet
   namespace: __NAMESPACE__
   labels:
-    app: sockpuppet
+    app.kubernetes.io/name: changedetection
+    app.kubernetes.io/component: browser
+    app.kubernetes.io/managed-by: kube.changedetection
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sockpuppet
+      app.kubernetes.io/name: changedetection
+      app.kubernetes.io/component: browser
   template:
     metadata:
       labels:
-        app: sockpuppet
+        app.kubernetes.io/name: changedetection
+        app.kubernetes.io/component: browser
+        app.kubernetes.io/managed-by: kube.changedetection
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-      - name: sockpuppet
-        image: docker.io/dgtlmoon/sockpuppetbrowser:latest
-        ports:
-        - containerPort: 3000
-        env:
-        - name: DEFAULT_LAUNCH_ARGS
-          value: '["--window-size=1920,1080"]'
-        - name: SCREEN_WIDTH
-          value: '1920'
-        - name: SCREEN_HEIGHT
-          value: '1080'
-        - name: SCREEN_DEPTH
-          value: '16'
-        - name: MAX_CONCURRENT_CHROME_PROCESSES
-          value: '10'
-        volumeMounts:
-        - name: dshm
-          mountPath: /dev/shm
-      resources:
-        requests:
-          memory: "512Mi"
-        limits:
-          memory: "2Gi"
+        - name: sockpuppet
+          image: docker.io/dgtlmoon/sockpuppetbrowser:0.0.3@sha256:23a7be698216407648b6c78fc55de0411bde550635edc30347373c86a5176fad
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DEFAULT_LAUNCH_ARGS
+              value: '["--window-size=1920,1080"]'
+            - name: SCREEN_WIDTH
+              value: "1920"
+            - name: SCREEN_HEIGHT
+              value: "1080"
+            - name: SCREEN_DEPTH
+              value: "16"
+            - name: MAX_CONCURRENT_CHROME_PROCESSES
+              value: "5"
+          ports:
+            - name: cdp
+              containerPort: 3000
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            tcpSocket:
+              port: cdp
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: cdp
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
       volumes:
-      - name: dshm
-        emptyDir:
-          medium: Memory
-
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi

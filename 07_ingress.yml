@@ -1,19 +1,21 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-www
+  name: changedetection
   namespace: __NAMESPACE__
+  labels:
+    app.kubernetes.io/name: changedetection
+    app.kubernetes.io/managed-by: kube.changedetection
 spec:
   ingressClassName: traefik
   rules:
-  - host: __FQDN__
-    http:
-      paths:
-      - backend:
-          service:
-            name: changedetection-io
-            port:
-              number: 5000
-        path: /
-        pathType: Prefix
-
+    - host: __FQDN__
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: changedetection
+                port:
+                  name: http

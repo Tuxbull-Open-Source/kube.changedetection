@@ -3,13 +3,16 @@ kind: Service
 metadata:
   name: sockpuppet
   namespace: __NAMESPACE__
-
+  labels:
+    app.kubernetes.io/name: changedetection
+    app.kubernetes.io/component: browser
+    app.kubernetes.io/managed-by: kube.changedetection
 spec:
-  selector:
-    app: sockpuppet
-  ports:
-    - protocol: TCP
-      port: 3000
-      targetPort: 3000
   type: ClusterIP
-
+  selector:
+    app.kubernetes.io/name: changedetection
+    app.kubernetes.io/component: browser
+  ports:
+    - name: cdp
+      port: 3000
+      targetPort: cdp
